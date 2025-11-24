@@ -6,11 +6,12 @@ interface MessageBubbleProps {
   message: string;
   tone: ToneType;
   timestamp: string;
+  author: string
   isUser?: boolean;
   showTone?: boolean;
 }
 
-export function MessageBubble({ message, tone, timestamp, isUser = false, showTone = true }: MessageBubbleProps) {
+export function MessageBubble({ message, tone, timestamp, author, isUser = false, showTone = true }: MessageBubbleProps) {
   const bgColors = {
     positive: isUser ? 'bg-primary text-primary-foreground' : 'bg-muted',
     neutral: isUser ? 'bg-primary text-primary-foreground' : 'bg-muted',
@@ -21,7 +22,7 @@ export function MessageBubble({ message, tone, timestamp, isUser = false, showTo
     <div className={cn('flex gap-3 mb-4', isUser ? 'flex-row-reverse' : 'flex-row')}>
       <Avatar className="h-8 w-8 shrink-0">
         <AvatarFallback className={isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}>
-          {isUser ? 'Y' : 'A'}
+          {author ? author.charAt(0) : "RC"}
         </AvatarFallback>
       </Avatar>
       <div className={cn('flex flex-col gap-1 max-w-[70%]', isUser ? 'items-end' : 'items-start')}>

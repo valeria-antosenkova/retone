@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from "react-router-dom";
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,46 +13,56 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { io } from "socket.io-client";
+import "../pages/style/home.css"
 
 interface Message {
   id: string;
   text: string;
   tone: ToneAnalysis;
   timestamp: string;
+  author: string,
   isUser: boolean;
 }
-
-export function ToneAwareChat() {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
+/*
     {
       id: 'initial',
       text: 'Hey! How are you doing today?',
-      tone: {
-        tone: 'positive',
-        confidence: 0.95,
-        label: 'Positive',
-        emoji: '😊',
-        hint: '',
-        suggestions: []
-      },
+      tone: { tone: 'positive', confidence: 0.95, label: 'Positive', emoji: '😊', hint: '', suggestions: [] },
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isUser: false
-    }
-  ]);
-  const [currentAnalysis, setCurrentAnalysis] = useState<ToneAnalysis>({
-    tone: 'neutral',
-    confidence: 0,
-    label: 'Neutral',
-    emoji: '😐',
-    hint: 'Start typing to see tone analysis',
-    suggestions: []
-  });
+    }*/
+const socket = io("http://localhost:3001");
+
+export function ToneAwareChat() {
+  const location = useLocation();
+  const urlParams = new URLSearchParams(location.search);
+  const room = urlParams.get("room");
+  const user = urlParams.get("user");
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentAnalysis, setCurrentAnalysis] = useState<ToneAnalysis>({ tone: 'neutral', confidence: 0, label: 'Neutral', emoji: '😐', hint: 'Start typing to see tone analysis', suggestions: []  });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [feedbackMode, setFeedbackMode] = useState(true); // true = Feedback Mode, false = Control Mode
   const [consecutiveNegativeCount, setConsecutiveNegativeCount] = useState(0);
   const { toast } = useToast();
+  useEffect(() => {
+    if (!room) return; 
+     // Join the room on mount
+    socket.emit("join-room", room, user);
+
+    // Listen for history and new messages
+    socket.on("chat-history", (history) => { console.log('Received chat-history:', history);  setMessages(history); });
+    socket.on("new-message", (msg) => { setMessages(prev => [...prev, msg]); });
+
+    // Cleanup on unmount
+    return () => {
+      socket.off("chat-history");
+      socket.off("new-message");
+      // socket.disconnect(); // optional if you want to keep session persistent
+    };
+  }, [room]);
 
   useEffect(() => {
     // Initialize the model on component mount
@@ -86,14 +97,7 @@ export function ToneAwareChat() {
         setCurrentAnalysis(analysis);
         setIsAnalyzing(false);
       } else {
-        setCurrentAnalysis({
-          tone: 'neutral',
-          confidence: 0,
-          label: 'Neutral',
-          emoji: '😐',
-          hint: 'Start typing to see tone analysis',
-          suggestions: []
-        });
+        setCurrentAnalysis({ tone: 'neutral', confidence: 0, label: 'Neutral', emoji: '😐', hint: 'Start typing to see tone analysis', suggestions: [] });
       }
     };
 
@@ -109,10 +113,14 @@ export function ToneAwareChat() {
       text: input,
       tone: currentAnalysis,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      author: user,
       isUser: true
     };
+    // Update local state immediately
+    // setMessages(prev => [...prev, newMessage]);
 
-    setMessages([...messages, newMessage]);
+    // Send directly to server    
+    socket.emit("send-message", room, newMessage);
     
     // Update escalation counter
     if (currentAnalysis.tone === 'negative') {
@@ -120,7 +128,6 @@ export function ToneAwareChat() {
     } else {
       setConsecutiveNegativeCount(0);
     }
-    
     setInput('');
   };
 
@@ -132,14 +139,14 @@ export function ToneAwareChat() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col">
       {/* Header */}
       <header className="border-b bg-card px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground mb-1">Tone-Aware Chat</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-1"><a href="/" style={{fontVariant: 'small-caps'}}>ReToned Chatroom</a></h1>
             <p className="text-sm text-muted-foreground">
-              Write with emotional intelligence • Real-time feedback
+              ROOM {room}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -171,6 +178,7 @@ export function ToneAwareChat() {
                     message={message.text}
                     tone={message.tone.tone}
                     timestamp={message.timestamp}
+                    author={message.author}
                     isUser={message.isUser}
                     showTone={feedbackMode}
                   />
