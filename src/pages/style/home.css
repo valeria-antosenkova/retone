@@ -1,8 +1,8 @@
 body{
     width: 100vw;
     height: 100vh; 
-    background: linear-gradient(40deg, black 10%, rgb(18, 22, 61) 20%, rgb(18, 18, 102) 30%, darkblue 50%, rgb(50, 0, 130) 70%, indigo 90%);
-    background-size: 300% 300%;
+    background: linear-gradient(40deg, black 0%, rgb(17, 21, 53) 20%, rgb(18, 18, 102) 30%, darkblue 50%, rgb(50, 0, 130) 70%, indigo 100%);
+    background-size: 500% 500%;
     animation: animateBG 50s ease infinite;
 }
 .home-container{
@@ -13,8 +13,9 @@ body{
     align-items: center;
     justify-content: center;  
     background: linear-gradient(40deg, black, rgb(18, 22, 61), rgb(18, 18, 102), darkblue, rgb(50, 0, 130), indigo);
-    background-size: 300% 300%;
+    background-size: 500% 500%;
     animation: animateBG 50s ease infinite;
+    background-blend-mode: overlay;
 }.home-container .menu-form{
     width: 50%;
     height: 70%; 
