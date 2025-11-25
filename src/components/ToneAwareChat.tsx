@@ -287,7 +287,7 @@ export function ToneAwareChat() {
                     tone={message.tone.tone}
                     timestamp={message.timestamp}
                     author={message.author}
-                    isUser={message.isUser}
+                    isUser={message.author === user}
                     showTone={feedbackMode}
                   />
                 ))}
