@@ -37,26 +37,30 @@ All colors MUST be HSL.
     --ring: 262 83% 58%;
 
     --radius: 0.75rem;
-    
+
     /* Tone colors - refined palette */
     --tone-positive: 142 76% 40%;
     --tone-positive-light: 142 65% 96%;
     --tone-positive-foreground: 142 70% 20%;
-    
+
     --tone-neutral: 200 18% 46%;
     --tone-neutral-light: 200 18% 96%;
     --tone-neutral-foreground: 200 18% 25%;
-    
+
     --tone-negative: 0 72% 51%;
     --tone-negative-light: 0 72% 97%;
     --tone-negative-foreground: 0 72% 25%;
-    
+
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(262 83% 48%));
-    
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(262 83% 58%),
+      hsl(262 83% 48%)
+    );
+
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    
+
     /* Shadows */
     --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.04);
     --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -106,16 +110,16 @@ All colors MUST be HSL.
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
-    
+
     /* Tone colors - refined palette for dark mode */
     --tone-positive: 142 76% 45%;
     --tone-positive-light: 142 50% 12%;
     --tone-positive-foreground: 142 65% 85%;
-    
+
     --tone-neutral: 200 18% 50%;
     --tone-neutral-light: 200 15% 12%;
     --tone-neutral-foreground: 200 18% 85%;
-    
+
     --tone-negative: 0 72% 55%;
     --tone-negative-light: 0 60% 12%;
     --tone-negative-foreground: 0 72% 90%;

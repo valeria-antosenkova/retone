@@ -1,27 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ToneIndicator } from '@/components/ToneIndicator';
-import { SuggestionPanel } from '@/components/SuggestionPanel';
-import { MessageBubble } from '@/components/MessageBubble';
-import { EscalationWarning } from '@/components/EscalationWarning';
-import { analyzeTone, ToneAnalysis, initializeSentimentAnalysis } from '@/utils/sentimentAnalysis';
-import { Send, Loader2, Eye, EyeOff } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ToneIndicator } from "@/components/ToneIndicator";
+import { SuggestionPanel } from "@/components/SuggestionPanel";
+import { MessageBubble } from "@/components/MessageBubble";
+import { EscalationWarning } from "@/components/EscalationWarning";
+import {
+  analyzeTone,
+  ToneAnalysis,
+  initializeSentimentAnalysis,
+} from "@/utils/sentimentAnalysis";
+import { Send, Loader2, Eye, EyeOff } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import { io } from "socket.io-client";
-import "../pages/style/home.css"
+import "../pages/style/home.css";
 
 interface Message {
   id: string;
   text: string;
   tone: ToneAnalysis;
   timestamp: string;
-  author: string,
+  author: string;
   isUser: boolean;
 }
 /*
@@ -39,27 +49,71 @@ export function ToneAwareChat() {
   const urlParams = new URLSearchParams(location.search);
   const room = urlParams.get("room");
   const user = urlParams.get("user");
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentAnalysis, setCurrentAnalysis] = useState<ToneAnalysis>({ tone: 'neutral', confidence: 0, label: 'Neutral', emoji: '😐', hint: 'Start typing to see tone analysis', suggestions: []  });
+  const [currentAnalysis, setCurrentAnalysis] = useState<ToneAnalysis>({
+    tone: "neutral",
+    confidence: 0,
+    label: "Neutral",
+    emoji: "😐",
+    hint: "Start typing to see tone analysis",
+    suggestions: [],
+  });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [feedbackMode, setFeedbackMode] = useState(true); // true = Feedback Mode, false = Control Mode
   const [consecutiveNegativeCount, setConsecutiveNegativeCount] = useState(0);
+  const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
   const { toast } = useToast();
   useEffect(() => {
-    if (!room) return; 
-     // Join the room on mount
+    if (!room) return;
+    // Join the room on mount
     socket.emit("join-room", room, user);
 
     // Listen for history and new messages
-    socket.on("chat-history", (history) => { console.log('Received chat-history:', history);  setMessages(history); });
-    socket.on("new-message", (msg) => { setMessages(prev => [...prev, msg]); });
+    socket.on("chat-history", (history) => {
+      console.log("Received chat-history:", history);
+      // Filter out system join messages from chat history
+      const filtered = (history || []).filter(
+        (h) =>
+          !(
+            h.author === "System" &&
+            typeof h.text === "string" &&
+            h.text.includes("joined")
+          )
+      );
+      setMessages(filtered);
+    });
+    socket.on("new-message", (msg) => {
+      if (
+        msg.author === "System" &&
+        typeof msg.text === "string" &&
+        msg.text.includes("joined")
+      )
+        return;
+      setMessages((prev) => [...prev, msg]);
+    });
+    // Listen for user list and user join/leave events
+    socket.on("user-list", (users) => {
+      setConnectedUsers(users || []);
+    });
+    socket.on("user-joined", (username) => {
+      setConnectedUsers((prev) => {
+        if (prev.includes(username)) return prev;
+        return [...prev, username];
+      });
+    });
+    socket.on("user-left", (username) => {
+      setConnectedUsers((prev) => prev.filter((u) => u !== username));
+    });
 
     // Cleanup on unmount
     return () => {
       socket.off("chat-history");
       socket.off("new-message");
+      socket.off("user-list");
+      socket.off("user-joined");
+      socket.off("user-left");
       // socket.disconnect(); // optional if you want to keep session persistent
     };
   }, [room]);
@@ -71,16 +125,16 @@ export function ToneAwareChat() {
         await initializeSentimentAnalysis();
         setIsModelLoading(false);
         toast({
-          title: 'Ready!',
-          description: 'Tone analysis is now active',
+          title: "Ready!",
+          description: "Tone analysis is now active",
         });
       } catch (error) {
-        console.error('Failed to load model:', error);
+        console.error("Failed to load model:", error);
         setIsModelLoading(false);
         toast({
-          title: 'Error',
-          description: 'Failed to load tone analysis model',
-          variant: 'destructive',
+          title: "Error",
+          description: "Failed to load tone analysis model",
+          variant: "destructive",
         });
       }
     };
@@ -97,7 +151,14 @@ export function ToneAwareChat() {
         setCurrentAnalysis(analysis);
         setIsAnalyzing(false);
       } else {
-        setCurrentAnalysis({ tone: 'neutral', confidence: 0, label: 'Neutral', emoji: '😐', hint: 'Start typing to see tone analysis', suggestions: [] });
+        setCurrentAnalysis({
+          tone: "neutral",
+          confidence: 0,
+          label: "Neutral",
+          emoji: "😐",
+          hint: "Start typing to see tone analysis",
+          suggestions: [],
+        });
       }
     };
 
@@ -112,27 +173,30 @@ export function ToneAwareChat() {
       id: Date.now().toString(),
       text: input,
       tone: currentAnalysis,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       author: user,
-      isUser: true
+      isUser: true,
     };
     // Update local state immediately
     // setMessages(prev => [...prev, newMessage]);
 
-    // Send directly to server    
+    // Send directly to server
     socket.emit("send-message", room, newMessage);
-    
+
     // Update escalation counter
-    if (currentAnalysis.tone === 'negative') {
-      setConsecutiveNegativeCount(prev => prev + 1);
+    if (currentAnalysis.tone === "negative") {
+      setConsecutiveNegativeCount((prev) => prev + 1);
     } else {
       setConsecutiveNegativeCount(0);
     }
-    setInput('');
+    setInput("");
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -144,18 +208,62 @@ export function ToneAwareChat() {
       <header className="border-b bg-card px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground mb-1"><a href="/" style={{fontVariant: 'small-caps'}}>ReToned Chatroom</a></h1>
-            <p className="text-sm text-muted-foreground">
-              ROOM {room}
-            </p>
+            <h1 className="text-2xl font-bold text-foreground mb-1">
+              <a href="/" style={{ fontVariant: "small-caps" }}>
+                ReToned Chatroom
+              </a>
+            </h1>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Room Code: </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-md bg-purple-50 text-purple-700 ring-1 ring-purple-100 text-sm font-medium">
+                {room}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            {feedbackMode ? <Eye className="h-4 w-4 text-muted-foreground" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+          <div className="flex items-center gap-6">
+            {/* Connected users indicator */}
+            {connectedUsers.length > 0 && (
+              <div className="flex items-center gap-2 pr-6 border-r border-border">
+                <span className="text-sm text-muted-foreground">Connected</span>
+                <div className="flex items-center gap-2">
+                  {connectedUsers.map((uname) => {
+                    const name = uname || "Host";
+                    const isMe = name === user;
+                    return (
+                      <div
+                        key={name}
+                        title={isMe ? `${name} (you)` : name}
+                        aria-current={isMe ? "true" : undefined}
+                        className={cn(
+                          "inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm",
+                          isMe
+                            ? "bg-sky-50 text-sky-700 font-semibold ring-1 ring-sky-200"
+                            : "bg-muted/5 text-muted-foreground"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "h-2 w-2 rounded-full",
+                            isMe ? "bg-sky-500" : "bg-green-500"
+                          )}
+                        />
+                        <span>{isMe ? `${name} (you)` : name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {feedbackMode ? (
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            )}
             <div className="flex items-center gap-2">
               <Label htmlFor="feedback-mode" className="text-sm font-medium">
-                {feedbackMode ? 'Feedback Mode' : 'Control Mode'}
+                {feedbackMode ? "Feedback Mode" : "Control Mode"}
               </Label>
-              <Switch 
+              <Switch
                 id="feedback-mode"
                 checked={feedbackMode}
                 onCheckedChange={setFeedbackMode}
@@ -198,20 +306,24 @@ export function ToneAwareChat() {
                     <span className="text-sm">Loading tone analysis...</span>
                   </div>
                 ) : (
-                  <ToneIndicator analysis={currentAnalysis} className="flex-1" />
+                  <ToneIndicator
+                    analysis={currentAnalysis}
+                    className="flex-1"
+                  />
                 )}
               </div>
             )}
 
             {/* Escalation Warning - only show in Feedback Mode */}
-            {feedbackMode && consecutiveNegativeCount >= 2 && currentAnalysis.tone === 'negative' && (
-              <EscalationWarning consecutiveNegativeCount={consecutiveNegativeCount} />
-            )}
+            {feedbackMode &&
+              consecutiveNegativeCount >= 2 &&
+              currentAnalysis.tone === "negative" && (
+                <EscalationWarning
+                  consecutiveNegativeCount={consecutiveNegativeCount}
+                />
+              )}
 
-            {/* Suggestion Panel - only show in Feedback Mode */}
-            {feedbackMode && !isModelLoading && (currentAnalysis.suggestions.length > 0 || currentAnalysis.tone === 'negative') && (
-              <SuggestionPanel analysis={currentAnalysis} />
-            )}
+            {/* Suggestion Panel is now available via inline popover button next to the send button */}
 
             {/* Input Box */}
             <Card className="p-4">
@@ -224,18 +336,36 @@ export function ToneAwareChat() {
                   className="min-h-[100px] resize-none"
                   disabled={isModelLoading}
                 />
-                <Button
-                  onClick={handleSendMessage}
-                  size="icon"
-                  disabled={!input.trim() || isModelLoading}
-                  className="h-[100px]"
-                >
-                  {isAnalyzing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
+                {/* Inline feedback popover trigger */}
+                {/* Inline feedback popover removed — we keep feedback available via the ToneIndicator next to the bar */}
+                <div className="relative">
+                  <Button
+                    onClick={handleSendMessage}
+                    size="icon"
+                    disabled={!input.trim() || isModelLoading}
+                    className="h-[100px]"
+                  >
+                    {isAnalyzing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                  {feedbackMode &&
+                    !isModelLoading &&
+                    (currentAnalysis.suggestions.length > 0 ||
+                      currentAnalysis.tone === "negative") && (
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "absolute -top-1 -right-1 h-2 w-2 rounded-full ring-1 ring-background",
+                          currentAnalysis.tone === "negative"
+                            ? "bg-tone-negative"
+                            : "bg-tone-positive"
+                        )}
+                      />
+                    )}
+                </div>
               </div>
             </Card>
           </div>
