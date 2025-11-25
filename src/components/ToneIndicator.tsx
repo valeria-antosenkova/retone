@@ -54,10 +54,10 @@ export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
               title="Show feedback"
               aria-label="Show feedback"
               className={cn(
-                "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 gap-2 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
+                "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 gap-2 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
                 analysis.tone === "negative"
                   ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 hover:border-red-300"
-                  : "bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300"
+                  : "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300"
               )}
             >
               {analysis.tone === "negative" ? (
@@ -94,7 +94,7 @@ export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
           <PopoverContent
             side="right"
             align="end"
-            className="w-96 p-0 shadow-xl border-purple-200 rounded-xl"
+            className="w-96 p-0 shadow-xl border-blue-200 rounded-xl"
             sideOffset={12}
             collisionPadding={16}
           >

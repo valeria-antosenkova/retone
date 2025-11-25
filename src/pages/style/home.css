@@ -44,7 +44,7 @@ body {
   margin: 0 auto;
 }
 .home-container .emphasis {
-  background-color: purple !important;
+  background-color: rgb(36, 36, 168) !important;
   color: white;
 }
 .home-container .menu-form h1 {
@@ -98,8 +98,8 @@ dialog {
   padding: 32px !important;
   border-radius: 16px;
   background: linear-gradient(135deg, rgb(250, 250, 252), rgb(255, 255, 255));
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  box-shadow: 0 20px 60px rgba(139, 92, 246, 0.15),
+  border: 1px solid rgba(36, 36, 168, 0.2);
+  box-shadow: 0 20px 60px rgba(36, 36, 168, 0.15),
     0 0 0 1px rgba(255, 255, 255, 0.1);
   display: none;
   flex-direction: row;
@@ -120,14 +120,14 @@ dialog input {
 }
 dialog input:focus {
   outline: none;
-  border-color: rgb(139, 92, 246);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  border-color: rgb(36, 36, 168);
+  box-shadow: 0 0 0 3px rgba(36, 36, 168, 0.1);
 }
 dialog input::placeholder {
   color: #9ca3af;
 }
 dialog button {
-  background-color: rgb(139, 92, 246) !important;
+  background-color: rgb(21, 21, 120) !important;
   color: white;
   border-radius: 8px !important;
   padding: 12px 24px !important;
@@ -138,8 +138,8 @@ dialog button {
   white-space: nowrap;
 }
 dialog button:hover {
-  background-color: rgb(124, 58, 237) !important;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  background-color: rgb(36, 46, 123) !important;
+  box-shadow: 0 4px 12px rgba(36, 36, 168, 0.3);
 }
 dialog a {
   position: absolute;

@@ -23,7 +23,7 @@ export function SuggestionPanel({ analysis, className }: SuggestionPanelProps) {
           "px-5 py-4 border-b",
           isNegative
             ? "bg-gradient-to-r from-red-50 to-red-100/50 border-red-100"
-            : "bg-gradient-to-r from-purple-50 to-purple-100/50 border-purple-100"
+            : "bg-gradient-to-r from-blue-50 to-blue-100/50 border-blue-100"
         )}
       >
         <div className="flex items-center gap-3">
@@ -32,7 +32,7 @@ export function SuggestionPanel({ analysis, className }: SuggestionPanelProps) {
               "p-2 rounded-lg",
               isNegative
                 ? "bg-red-100 text-red-600"
-                : "bg-purple-100 text-purple-600"
+                : "bg-blue-100 text-blue-600"
             )}
           >
             <Lightbulb className="h-5 w-5" />
@@ -41,7 +41,7 @@ export function SuggestionPanel({ analysis, className }: SuggestionPanelProps) {
             <h3
               className={cn(
                 "text-sm font-semibold",
-                isNegative ? "text-red-900" : "text-purple-900"
+                isNegative ? "text-red-900" : "text-blue-900"
               )}
             >
               {isNegative ? "Tone Alert" : "Writing Tips"}
@@ -49,7 +49,7 @@ export function SuggestionPanel({ analysis, className }: SuggestionPanelProps) {
             <p
               className={cn(
                 "text-xs mt-0.5",
-                isNegative ? "text-red-700" : "text-purple-700"
+                isNegative ? "text-red-700" : "text-blue-700"
               )}
             >
               {analysis.hint}
@@ -72,7 +72,7 @@ export function SuggestionPanel({ analysis, className }: SuggestionPanelProps) {
                     "mt-1 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold",
                     isNegative
                       ? "bg-red-100 text-red-600"
-                      : "bg-purple-100 text-purple-600"
+                      : "bg-blue-100 text-blue-600"
                   )}
                 >
                   {index + 1}

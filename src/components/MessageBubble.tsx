@@ -20,9 +20,9 @@ export function MessageBubble({
   showTone = true,
 }: MessageBubbleProps) {
   const bgColors = {
-    positive: isUser ? "bg-purple-500 text-white" : "bg-muted text-foreground",
-    neutral: isUser ? "bg-purple-500 text-white" : "bg-muted text-foreground",
-    negative: isUser ? "bg-purple-500 text-white" : "bg-muted text-foreground",
+    positive: isUser ? "bg-blue-700 text-white" : "bg-muted text-foreground",
+    neutral: isUser ? "bg-blue-700 text-white" : "bg-muted text-foreground",
+    negative: isUser ? "bg-blue-700 text-white" : "bg-muted text-foreground",
   };
 
   return (
@@ -35,9 +35,7 @@ export function MessageBubble({
       <Avatar className="h-8 w-8 shrink-0">
         <AvatarFallback
           className={
-            isUser
-              ? "bg-purple-600 text-white"
-              : "bg-muted text-muted-foreground"
+            isUser ? "bg-blue-700 text-white" : "bg-muted text-muted-foreground"
           }
         >
           {author ? author.charAt(0) : "RC"}
@@ -51,7 +49,7 @@ export function MessageBubble({
       >
         <div
           className={cn(
-            "px-4 py-2 rounded-2xl break-words",
+            "px-4 py-2 rounded-2xl break-words relative group",
             bgColors[tone],
             isUser ? "rounded-tr-sm" : "rounded-tl-sm"
           )}
