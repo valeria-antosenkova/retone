@@ -24,83 +24,108 @@ export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
   };
 
   return (
-    <div className={cn("flex items-center gap-3", className)}>
-      <Badge
-        variant="outline"
-        className={cn(
-          "transition-all duration-300 ease-in-out whitespace-nowrap",
-          toneColors[analysis.tone]
-        )}
-      >
-        <span className="mr-1">{analysis.emoji}</span>
-        {analysis.label}
-      </Badge>
-      <div className="flex-1 h-2.5 bg-secondary rounded-full overflow-hidden min-w-[120px]">
-        <div
+    <div className={cn("flex flex-col gap-3", className)}>
+      <div className="flex items-center gap-3">
+        <Badge
+          variant="outline"
           className={cn(
-            "h-full transition-all duration-500 ease-out",
-            analysis.tone === "positive" && "bg-tone-positive",
-            analysis.tone === "neutral" && "bg-tone-neutral",
-            analysis.tone === "negative" && "bg-tone-negative"
+            "transition-all duration-300 ease-in-out whitespace-nowrap",
+            toneColors[analysis.tone]
           )}
-          style={{ width: `${analysis.confidence * 100}%` }}
-        />
-      </div>
-      {/* Feedback button next to the colored bar */}
-      {(analysis.suggestions.length > 0 || analysis.tone === "negative") && (
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              title="Show feedback"
-              aria-label="Show feedback"
-              className={cn(
-                "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 gap-2 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
-                analysis.tone === "negative"
-                  ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 hover:border-red-300"
-                  : "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300"
-              )}
+        >
+          <span className="mr-1">{analysis.emoji}</span>
+          {analysis.label}
+        </Badge>
+        <div className="flex-1 h-2.5 bg-secondary rounded-full overflow-hidden min-w-[120px]">
+          <div
+            className={cn(
+              "h-full transition-all duration-500 ease-out",
+              analysis.tone === "positive" && "bg-tone-positive",
+              analysis.tone === "neutral" && "bg-tone-neutral",
+              analysis.tone === "negative" && "bg-tone-negative"
+            )}
+            style={{ width: `${analysis.confidence * 100}%` }}
+          />
+        </div>
+        {/* Feedback button next to the colored bar */}
+        {(analysis.suggestions.length > 0 || analysis.tone === "negative") && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                title="Show feedback"
+                aria-label="Show feedback"
+                className={cn(
+                  "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 gap-2 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
+                  analysis.tone === "negative"
+                    ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 hover:border-red-300"
+                    : "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300"
+                )}
+              >
+                {analysis.tone === "negative" ? (
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                    <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2" />
+                  </svg>
+                ) : (
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path
+                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                )}
+                <span>Feedback</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="right"
+              align="end"
+              className="w-96 p-0 shadow-xl border-blue-200 rounded-xl"
+              sideOffset={12}
+              collisionPadding={16}
             >
-              {analysis.tone === "negative" ? (
-                <svg
-                  className="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                  <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2" />
-                </svg>
-              ) : (
-                <svg
-                  className="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path
-                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                    strokeWidth="2"
-                  />
-                </svg>
-              )}
-              <span>Feedback</span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            side="right"
-            align="end"
-            className="w-96 p-0 shadow-xl border-blue-200 rounded-xl"
-            sideOffset={12}
-            collisionPadding={16}
-          >
-            <SuggestionPanel analysis={analysis} />
-          </PopoverContent>
-        </Popover>
+              <SuggestionPanel analysis={analysis} />
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+
+      {/* Emotion Detection Display - 28 emotion categories */}
+      {analysis.emotion && (
+        <div className="border-t pt-3">
+          <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+            Detected Emotion
+          </p>
+          <Badge variant="secondary" className="capitalize">
+            {analysis.emotion}
+          </Badge>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Confidence:{" "}
+            <span className="font-semibold">
+              {(analysis.confidence * 100).toFixed(1)}%
+            </span>
+          </p>
+          {analysis.modelName && (
+            <p className="text-xs text-muted-foreground mt-1 italic">
+              {analysis.modelName.replace(/\s*\(.*?\)\s*/g, "").trim()}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
