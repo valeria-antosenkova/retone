@@ -299,7 +299,7 @@ export function ToneAwareChat() {
           <div className="space-y-4">
             {/* Tone Indicator - only show in Feedback Mode */}
             {feedbackMode && (
-              <div className="flex items-center justify-between gap-4">
+              <Card className="p-4 bg-gradient-to-r from-purple-50/50 to-transparent border-purple-100">
                 {isModelLoading ? (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -308,10 +308,10 @@ export function ToneAwareChat() {
                 ) : (
                   <ToneIndicator
                     analysis={currentAnalysis}
-                    className="flex-1"
+                    className="w-full"
                   />
                 )}
-              </div>
+              </Card>
             )}
 
             {/* Escalation Warning - only show in Feedback Mode */}
@@ -323,10 +323,8 @@ export function ToneAwareChat() {
                 />
               )}
 
-            {/* Suggestion Panel is now available via inline popover button next to the send button */}
-
             {/* Input Box */}
-            <Card className="p-4">
+            <Card className="p-4 shadow-sm">
               <div className="flex gap-2">
                 <Textarea
                   value={input}

@@ -24,18 +24,18 @@ export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
   };
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-3", className)}>
       <Badge
         variant="outline"
         className={cn(
-          "transition-all duration-300 ease-in-out",
+          "transition-all duration-300 ease-in-out whitespace-nowrap",
           toneColors[analysis.tone]
         )}
       >
         <span className="mr-1">{analysis.emoji}</span>
         {analysis.label}
       </Badge>
-      <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+      <div className="flex-1 h-2.5 bg-secondary rounded-full overflow-hidden min-w-[120px]">
         <div
           className={cn(
             "h-full transition-all duration-500 ease-out",
@@ -54,10 +54,10 @@ export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
               title="Show feedback"
               aria-label="Show feedback"
               className={cn(
-                "inline-flex items-center justify-center rounded-md px-2 py-1 text-sm font-medium focus:outline-none focus-visible:ring-2 gap-2",
+                "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 gap-2 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
                 analysis.tone === "negative"
-                  ? "bg-tone-negative-light text-tone-negative-foreground border-tone-negative"
-                  : "bg-tone-positive-light text-tone-positive-foreground border-tone-positive"
+                  ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 hover:border-red-300"
+                  : "bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 hover:border-purple-300"
               )}
             >
               {analysis.tone === "negative" ? (
@@ -66,11 +66,12 @@ export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <path
-                    strokeWidth="2"
-                    d="M12 9v2m0 4h.01M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"
-                  ></path>
+                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                  <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2" />
                 </svg>
               ) : (
                 <svg
@@ -78,15 +79,25 @@ export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <path strokeWidth="2" d="M9 12l2 2 4-4"></path>
+                  <path
+                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                    strokeWidth="2"
+                  />
                 </svg>
               )}
-              {/* Visible title label so users know what the button does */}
-              <span className="text-sm font-medium">Show feedback</span>
+              <span>Feedback</span>
             </button>
           </PopoverTrigger>
-          <PopoverContent side="top">
+          <PopoverContent
+            side="right"
+            align="end"
+            className="w-96 p-0 shadow-xl border-purple-200 rounded-xl"
+            sideOffset={12}
+            collisionPadding={16}
+          >
             <SuggestionPanel analysis={analysis} />
           </PopoverContent>
         </Popover>
