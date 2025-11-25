@@ -35,14 +35,7 @@ interface Message {
   author: string;
   isUser: boolean;
 }
-/*
-    {
-      id: 'initial',
-      text: 'Hey! How are you doing today?',
-      tone: { tone: 'positive', confidence: 0.95, label: 'Positive', emoji: '😊', hint: '', suggestions: [] },
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isUser: false
-    }*/
+
 const socket = io("http://localhost:3001");
 
 export function ToneAwareChat() {
@@ -69,20 +62,15 @@ export function ToneAwareChat() {
   const [lastInputSnapshot, setLastInputSnapshot] = useState("");
   const [editCount, setEditCount] = useState(0);
   const { toast } = useToast();
+
   useEffect(() => {
     if (!room) return;
 
-    // Clear and initialize fresh metrics tracking for this session
-    // This ensures each room starts with clean data
     metricsTracker.createSession(room, true);
-
-    // Join the room on mount
     socket.emit("join-room", room, user);
 
-    // Listen for history and new messages
     socket.on("chat-history", (history) => {
       console.log("Received chat-history:", history);
-      // Filter out system join messages from chat history
       const filtered = (history || []).filter(
         (h) =>
           !(
@@ -93,6 +81,7 @@ export function ToneAwareChat() {
       );
       setMessages(filtered);
     });
+
     socket.on("new-message", (msg) => {
       if (
         msg.author === "System" &&
@@ -102,8 +91,6 @@ export function ToneAwareChat() {
         return;
       setMessages((prev) => [...prev, msg]);
 
-      // Track message in metrics ONLY if it's from another user
-      // Don't track our own messages here since they're tracked in handleSendMessage
       if (msg.author && msg.id && msg.tone && msg.author !== user) {
         metricsTracker.trackMessage(
           room,
@@ -114,7 +101,7 @@ export function ToneAwareChat() {
         );
       }
     });
-    // Listen for user list and user join/leave events
+
     socket.on("user-list", (users) => {
       setConnectedUsers(users || []);
     });
@@ -128,7 +115,6 @@ export function ToneAwareChat() {
       setConnectedUsers((prev) => prev.filter((u) => u !== username));
     });
 
-    // Cleanup on unmount
     return () => {
       socket.off("chat-history");
       socket.off("new-message");
@@ -136,16 +122,13 @@ export function ToneAwareChat() {
       socket.off("user-joined");
       socket.off("user-left");
 
-      // Clear metrics data for this session when leaving
       if (room) {
         metricsTracker.clearSession(room);
       }
-      // socket.disconnect(); // optional if you want to keep session persistent
     };
-  }, [room]);
+  }, [room, user]);
 
   useEffect(() => {
-    // Initialize the model on component mount
     const loadModel = async () => {
       try {
         await initializeSentimentAnalysis();
@@ -195,23 +178,18 @@ export function ToneAwareChat() {
   // Track edits during typing (after 3s pause)
   useEffect(() => {
     if (!input.trim() || !feedbackMode) {
-      // Reset tracking when input is empty or not in feedback mode
       setLastInputSnapshot("");
       setEditCount(0);
       setCurrentMessageId("");
       return;
     }
 
-    // Detect edit: after 3s pause, check if the message changed
     const editDetectionTimer = setTimeout(() => {
       if (lastInputSnapshot && lastInputSnapshot !== input) {
-        // User changed the message after a pause - count as an edit
         const newEditCount = editCount + 1;
         setEditCount(newEditCount);
 
-        // Track in metrics
         if (!currentMessageId) {
-          // First time typing this message, create an ID
           const msgId = Date.now().toString();
           setCurrentMessageId(msgId);
         }
@@ -220,7 +198,6 @@ export function ToneAwareChat() {
           metricsTracker.trackMessageEdit(room, user, currentMessageId);
         }
       }
-      // Update snapshot
       setLastInputSnapshot(input);
     }, 3000);
 
@@ -249,18 +226,13 @@ export function ToneAwareChat() {
       author: user,
       isUser: true,
     };
-    // Update local state immediately
-    // setMessages(prev => [...prev, newMessage]);
 
-    // Send directly to server
     socket.emit("send-message", room, newMessage);
 
-    // Update escalation counter
     if (currentAnalysis.tone === "negative") {
       const newCount = consecutiveNegativeCount + 1;
       setConsecutiveNegativeCount(newCount);
 
-      // Track escalation in metrics when reaching threshold
       if (newCount >= 2) {
         metricsTracker.trackEscalation(room, user);
       }
@@ -268,7 +240,6 @@ export function ToneAwareChat() {
       setConsecutiveNegativeCount(0);
     }
 
-    // Track message in metrics (with edit count already tracked during typing)
     metricsTracker.trackMessage(
       room,
       user,
@@ -277,7 +248,6 @@ export function ToneAwareChat() {
       input.length
     );
 
-    // Reset typing state
     setInput("");
     setLastInputSnapshot("");
     setEditCount(0);
@@ -294,10 +264,7 @@ export function ToneAwareChat() {
   const handleExportData = () => {
     if (!room) return;
 
-    // End the session for export
     metricsTracker.endSession(room);
-
-    // Download both JSON and CSV formats
     metricsTracker.downloadAsJSON(room);
     metricsTracker.downloadAsCSV(room);
 
@@ -326,10 +293,11 @@ export function ToneAwareChat() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-6">
+
+          <div className="flex items-center gap-4">
             {/* Connected users indicator */}
             {connectedUsers.length > 0 && (
-              <div className="flex items-center gap-2 pr-6 border-r border-border">
+              <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">Connected</span>
                 <div className="flex items-center gap-2">
                   {connectedUsers.map((uname) => {
@@ -341,10 +309,10 @@ export function ToneAwareChat() {
                         title={isMe ? `${name} (you)` : name}
                         aria-current={isMe ? "true" : undefined}
                         className={cn(
-                          "inline-flex items-center gap-2 px-2 py-1 rounded-md text-sm",
+                          "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm",
                           isMe
                             ? "bg-sky-50 text-sky-700 font-semibold ring-1 ring-sky-200"
-                            : "bg-muted/5 text-muted-foreground"
+                            : "bg-muted/50 text-muted-foreground"
                         )}
                       >
                         <span
@@ -360,31 +328,35 @@ export function ToneAwareChat() {
                 </div>
               </div>
             )}
-            {feedbackMode ? (
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <EyeOff className="h-4 w-4 text-muted-foreground" />
-            )}
-            <div className="flex items-center gap-2">
-              <Label htmlFor="feedback-mode" className="text-sm font-medium">
-                {feedbackMode ? "Feedback Mode" : "Control Mode"}
-              </Label>
-              <Switch
-                id="feedback-mode"
-                checked={feedbackMode}
-                onCheckedChange={setFeedbackMode}
-              />
+
+            {/* Right-aligned feedback + export */}
+            <div className="flex items-center gap-3 pl-5 border-l border-border ml-auto">
+              {feedbackMode ? (
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <EyeOff className="h-4 w-4 text-muted-foreground" />
+              )}
+              <div className="flex items-center gap-2">
+                <Label htmlFor="feedback-mode" className="text-sm font-medium">
+                  {feedbackMode ? "Feedback Mode" : "Control Mode"}
+                </Label>
+                <Switch
+                  id="feedback-mode"
+                  checked={feedbackMode}
+                  onCheckedChange={setFeedbackMode}
+                />
+              </div>
+
+              <Button
+                onClick={handleExportData}
+                variant="outline"
+                size="sm"
+                className="gap-2 h-9 whitespace-nowrap"
+              >
+                <Download className="h-4 w-4" />
+                Export Data
+              </Button>
             </div>
-            {/* Export Data Button - only visible to host */}
-            <Button
-              onClick={handleExportData}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export Data
-            </Button>
           </div>
         </div>
       </header>
@@ -431,13 +403,11 @@ export function ToneAwareChat() {
             )}
 
             {/* Escalation Warning - only show in Feedback Mode */}
-            {feedbackMode &&
-              consecutiveNegativeCount >= 2 &&
-              currentAnalysis.tone === "negative" && (
-                <EscalationWarning
-                  consecutiveNegativeCount={consecutiveNegativeCount}
-                />
-              )}
+            {feedbackMode && consecutiveNegativeCount >= 2 && (
+              <EscalationWarning
+                consecutiveNegativeCount={consecutiveNegativeCount}
+              />
+            )}
 
             {/* Input Box */}
             <Card className="p-4 shadow-sm">
@@ -450,8 +420,6 @@ export function ToneAwareChat() {
                   className="min-h-[100px] resize-none"
                   disabled={isModelLoading}
                 />
-                {/* Inline feedback popover trigger */}
-                {/* Inline feedback popover removed — we keep feedback available via the ToneIndicator next to the bar */}
                 <div className="relative">
                   <Button
                     onClick={handleSendMessage}
