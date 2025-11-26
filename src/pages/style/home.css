@@ -10,10 +10,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  /* Reset animation for white background */
-  background-size: initial;
-  animation: none;
+  background: linear-gradient(40deg, black 0%, rgb(17, 21, 53) 20%, rgb(18, 18, 102) 30%, darkblue 50%, rgb(50, 0, 130) 70%, indigo 100%);
+  background-size: 500% 500%;
+  animation: animateBG 50s ease infinite;
   background-blend-mode: overlay;
 }
 .home-container .menu-form {
@@ -24,28 +23,49 @@ body {
   gap: 10px;
   align-items: center;
   justify-content: center;
-  /* keep subtle white overlay instead of dark tint */
-  background-color: rgba(255, 255, 255, 0.96);
-  color: #111; /* ensure text is dark on white */
-  backdrop-filter: blur(500px);
-  border-radius: 80px;
+  background-color: transparent;
+  color: #fff;
+  backdrop-filter: none;
+  border-radius: 0;
 }
 .home-container .buttons-section {
   display: flex;
   flex-direction: row;
-  gap: 15px;
+  gap: 20px;
 }
 .home-container button,
 .home-container a {
-  border-radius: 8px;
-  background-color: lightgray;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
   width: fit-content;
-  padding: 1vw 2vh;
+  padding: 14px 32px;
   margin: 0 auto;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+.home-container button:hover,
+.home-container a:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 .home-container .emphasis {
-  background-color: rgb(36, 36, 168) !important;
-  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+}
+.home-container .emphasis:hover {
+  background: linear-gradient(135deg, #7c8ef0 0%, #8c5bb2 100%) !important;
+  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
 }
 .home-container .menu-form h1 {
   font-size: 60px;
@@ -54,17 +74,19 @@ body {
 }
 .word-animation {
   background-repeat: no-repeat;
-  animation: circular-flow infinite linear;
+  animation: circular-flow infinite linear, revealWord 0s 0.8s forwards;
   -webkit-text-fill-color: transparent;
   -webkit-background-clip: text;
   -webkit-box-decoration-break: clone;
   background-clip: text;
   box-decoration-break: clone;
+  visibility: hidden;
 }
 .word-animation:nth-of-type(1) {
   background-image: url("https://images.pexels.com/photos/7135121/pexels-photo-7135121.jpeg");
   background-size: 720px 1024px;
-  animation-duration: 30s;
+  animation-duration: 30s, 0s;
+  animation-delay: 0s, 0.8s;
 }
 .word-animation::before {
   background-image: inherit;
@@ -200,5 +222,11 @@ dialog.active {
   }
   100% {
     background-position: 50% 0%;
+  }
+}
+
+@keyframes revealWord {
+  to {
+    visibility: visible;
   }
 }
