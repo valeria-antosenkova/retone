@@ -30,7 +30,7 @@ export async function initializeSentimentAnalysis() {
         "Xenova/twitter-roberta-base-sentiment-latest"
       );
 
-      loadedModelName = "Twitter RoBERTa Sentiment";
+      loadedModelName = "RoBERTa Sentiment";
       console.log(
         "[Sentiment] ✓ Twitter sentiment model loaded - conversation-optimized!"
       );
@@ -41,27 +41,43 @@ export async function initializeSentimentAnalysis() {
       );
 
       try {
+        // Try Twitter RoBERTa sentiment (trained on real conversations)
         emotionPipeline = await pipeline(
           "text-classification",
-          "Xenova/distilbert-base-uncased-finetuned-sst-2-english"
+          "Xenova/twitter-roberta-base-sentiment-latest"
         );
 
-        loadedModelName = "DistilBERT SST-2 (positive/negative only)";
-        console.log("[Sentiment] ✓ DistilBERT SST-2 loaded");
-      } catch (sst2Error) {
+        loadedModelName = "Twitter RoBERTa Sentiment";
+        console.log("[Sentiment] ✓ Twitter sentiment model loaded");
+      } catch (twitterError) {
         console.warn(
-          "[Sentiment] DistilBERT SST-2 failed, using 5-star fallback:",
-          sst2Error
+          "[Sentiment] Twitter model failed, trying DistilBERT SST-2:",
+          twitterError
         );
 
-        // Final fallback to star-based sentiment
-        emotionPipeline = await pipeline(
-          "text-classification",
-          "Xenova/bert-base-multilingual-uncased-sentiment"
-        );
+        try {
+          emotionPipeline = await pipeline(
+            "text-classification",
+            "Xenova/distilbert-base-uncased-finetuned-sst-2-english"
+          );
 
-        loadedModelName = "BERT Sentiment (5-star fallback)";
-        console.log("[Sentiment] ✓ Fallback model loaded");
+          loadedModelName = "DistilBERT SST-2 (positive/negative only)";
+          console.log("[Sentiment] ✓ DistilBERT SST-2 loaded");
+        } catch (sst2Error) {
+          console.warn(
+            "[Sentiment] DistilBERT SST-2 failed, using 5-star fallback:",
+            sst2Error
+          );
+
+          // Final fallback to star-based sentiment
+          emotionPipeline = await pipeline(
+            "text-classification",
+            "Xenova/bert-base-multilingual-uncased-sentiment"
+          );
+
+          loadedModelName = "BERT Sentiment (5-star fallback)";
+          console.log("[Sentiment] ✓ Fallback model loaded");
+        }
       }
     }
   }
@@ -81,25 +97,60 @@ export async function analyzeTone(text: string): Promise<ToneAnalysis> {
     };
   }
 
-  // Check for apology-related language
+  // Advanced emotion detection with context-aware patterns
+
+  // Apology patterns - check first for neutral tone
   const apologyPatterns =
-    /\b(sorry|apologize|apologies|my bad|my mistake|i was wrong|forgive me|excuse me|i apologize|my apologies|i'm sorry)\b/i;
-  const isApology = apologyPatterns.test(text);
+    /\b(sorry|apologize|apologies|my bad|my mistake|i was wrong|forgive me|excuse me|i apologize|my apologies|i'm sorry|i regret)\b/i;
 
-  // Check for other emotion keywords since models won't load in browser
+  // Love & affection - expanded with intensity markers
   const lovePatterns =
-    /\b(love|adore|cherish|treasure|affection|care about|mean the world|heart)\b/i;
-  const fearPatterns =
-    /\b(scared|afraid|terrified|fear|worried|anxious|nervous|frightened|panic)\b/i;
-  const sadnessPatterns =
-    /\b(sad|depressed|heartbroken|miserable|unhappy|disappointed|devastated|crying|tears)\b/i;
-  const surprisePatterns =
-    /\b(wow|omg|amazing|incredible|unbelievable|shocked|surprised|astonished|can't believe)\b/i;
+    /\b(love|adore|cherish|treasure|affection|care deeply|mean everything|mean the world|heart|devoted|fond of|passionate about|deeply appreciate|grateful for)\b/i;
 
+  // Fear & anxiety - with various intensities
+  const fearPatterns =
+    /\b(scared|afraid|terrified|fear|worried|anxious|nervous|frightened|panic|concerned|uneasy|apprehensive|dread|intimidated|wary)\b/i;
+
+  // Sadness & disappointment - nuanced expressions
+  const sadnessPatterns =
+    /\b(sad|depressed|heartbroken|miserable|unhappy|disappointed|devastated|crying|tears|grief|sorrow|melancholy|dejected|down|blue|hurt|pain)\b/i;
+
+  // Surprise & amazement - positive and neutral variations
+  const surprisePatterns =
+    /\b(wow|omg|amazing|incredible|unbelievable|shocked|surprised|astonished|can't believe|blown away|speechless|mind-blowing|astounded|flabbergasted)\b/i;
+
+  // Joy & excitement - high energy positive emotions
+  const joyPatterns =
+    /\b(thrilled|excited|elated|delighted|overjoyed|ecstatic|happy|cheerful|joyful|pleased|glad|wonderful|fantastic|excellent|great job|awesome|brilliant)\b/i;
+
+  // Anger & frustration - varying intensities
+  const angerPatterns =
+    /\b(furious|enraged|livid|irate|mad|angry|frustrated|irritated|annoyed|infuriated|outraged|pissed|rage|unacceptable|ridiculous)\b/i;
+
+  // Disgust & contempt
+  const disgustPatterns =
+    /\b(disgusting|revolting|repulsive|gross|nasty|vile|appalling|horrible|terrible|awful|pathetic|despicable|contemptible)\b/i;
+
+  // Gratitude & appreciation
+  const gratitudePatterns =
+    /\b(thank you|thanks|grateful|appreciate|appreciation|thankful|bless|blessing|indebted)\b/i;
+
+  // Confidence & pride
+  const confidencePatterns =
+    /\b(confident|proud|accomplished|achieved|succeeded|nailed it|crushed it|killed it|excellent work|well done)\b/i;
+
+  const isApology = apologyPatterns.test(text);
   const isLove = lovePatterns.test(text);
   const isFear = fearPatterns.test(text);
   const isSadness = sadnessPatterns.test(text);
   const isSurprise = surprisePatterns.test(text);
+  const isJoy = joyPatterns.test(text);
+  const isAnger = angerPatterns.test(text);
+  const isDisgust = disgustPatterns.test(text);
+  const isGratitude = gratitudePatterns.test(text);
+  const isConfidence = confidencePatterns.test(text);
+
+  // Priority order: apology > specific emotions > run ML model
 
   // IMMEDIATELY return for apologies - don't run through emotion model
   if (isApology) {
@@ -116,7 +167,52 @@ export async function analyzeTone(text: string): Promise<ToneAnalysis> {
         "Make a genuine commitment to change",
       ],
       emotion: "remorse",
-      modelName: "Keyword detection (bypassed emotion model)",
+      modelName: "Pattern-based detection",
+    };
+  }
+
+  // Gratitude - warm positive emotion
+  if (isGratitude) {
+    console.log("[GRATITUDE DETECTED - KEYWORD MATCH]:", text);
+    return {
+      tone: "positive",
+      confidence: 0.9,
+      label: "Grateful",
+      emoji: "🙏",
+      hint: "Your message expresses sincere appreciation.",
+      suggestions: [],
+      emotion: "gratitude",
+      modelName: "Pattern-based detection",
+    };
+  }
+
+  // Confidence & Pride
+  if (isConfidence) {
+    console.log("[CONFIDENCE DETECTED - KEYWORD MATCH]:", text);
+    return {
+      tone: "positive",
+      confidence: 0.85,
+      label: "Confident",
+      emoji: "💪",
+      hint: "Your message shows self-assurance and accomplishment.",
+      suggestions: [],
+      emotion: "confidence",
+      modelName: "Pattern-based detection",
+    };
+  }
+
+  // Joy - check for strong joy keywords before ML model
+  if (isJoy) {
+    console.log("[JOY DETECTED - KEYWORD MATCH]:", text);
+    return {
+      tone: "positive",
+      confidence: 0.88,
+      label: "Joyful",
+      emoji: "😊",
+      hint: "Your message radiates happiness and enthusiasm!",
+      suggestions: [],
+      emotion: "joy",
+      modelName: "Pattern-based detection",
     };
   }
 
@@ -128,10 +224,48 @@ export async function analyzeTone(text: string): Promise<ToneAnalysis> {
       confidence: 0.85,
       label: "Loving",
       emoji: "❤️",
-      hint: "Your message radiates warmth and care.",
+      hint: "Your message radiates warmth and deep care.",
       suggestions: [],
       emotion: "love",
-      modelName: "Keyword detection (love)",
+      modelName: "Pattern-based detection",
+    };
+  }
+
+  // Disgust - strong negative emotion
+  if (isDisgust) {
+    console.log("[DISGUST DETECTED - KEYWORD MATCH]:", text);
+    return {
+      tone: "negative",
+      confidence: 0.87,
+      label: "Disgusted",
+      emoji: "🤢",
+      hint: "Your message shows strong disapproval that could be perceived as harsh.",
+      suggestions: [
+        "Separate the behavior from the person",
+        "State your boundaries clearly but respectfully",
+        "Explain the impact rather than just condemning",
+      ],
+      emotion: "disgust",
+      modelName: "Pattern-based detection",
+    };
+  }
+
+  // Anger - strong negative emotion
+  if (isAnger) {
+    console.log("[ANGER DETECTED - KEYWORD MATCH]:", text);
+    return {
+      tone: "negative",
+      confidence: 0.88,
+      label: "Harsh",
+      emoji: "😠",
+      hint: "Your message contains strong negative emotions that might escalate tension.",
+      suggestions: [
+        "Pause and take a breath before sending",
+        "Focus on the specific issue, not personal attacks",
+        "Express what you need instead of what went wrong",
+      ],
+      emotion: "anger",
+      modelName: "Pattern-based detection",
     };
   }
 
@@ -139,18 +273,18 @@ export async function analyzeTone(text: string): Promise<ToneAnalysis> {
   if (isFear) {
     console.log("[FEAR DETECTED - KEYWORD MATCH]:", text);
     return {
-      tone: "negative",
+      tone: "neutral",
       confidence: 0.85,
       label: "Fearful",
       emoji: "😨",
-      hint: "Your message conveys anxiety or concern.",
+      hint: "Your message reveals worry or uncertainty about what's ahead.",
       suggestions: [
-        "Share what you're concerned about specifically",
-        "Suggest solutions or ways to address the concern",
-        "Remember that sharing fears can help resolve them",
+        "Identify the specific concern you're facing",
+        "Ask for reassurance or clarity if needed",
+        "Sharing your fears helps others understand your perspective",
       ],
       emotion: "fear",
-      modelName: "Keyword detection (fear)",
+      modelName: "Pattern-based detection",
     };
   }
 
@@ -158,7 +292,7 @@ export async function analyzeTone(text: string): Promise<ToneAnalysis> {
   if (isSadness) {
     console.log("[SADNESS DETECTED - KEYWORD MATCH]:", text);
     return {
-      tone: "negative",
+      tone: "neutral",
       confidence: 0.85,
       label: "Sad",
       emoji: "😢",
@@ -169,7 +303,7 @@ export async function analyzeTone(text: string): Promise<ToneAnalysis> {
         "It's okay to express sadness - it shows you care",
       ],
       emotion: "sadness",
-      modelName: "Keyword detection (sadness)",
+      modelName: "Pattern-based detection",
     };
   }
 
@@ -178,16 +312,16 @@ export async function analyzeTone(text: string): Promise<ToneAnalysis> {
     console.log("[SURPRISE DETECTED - KEYWORD MATCH]:", text);
     return {
       tone: "neutral",
-      confidence: 0.85,
+      confidence: 0.83,
       label: "Surprised",
       emoji: "😮",
-      hint: "Your message expresses surprise or amazement.",
+      hint: "Your message shows you're reacting to unexpected information.",
       suggestions: [
-        "Clarify whether this is positive or negative surprise",
-        "Share what specifically caught you off guard",
+        "Indicate if you're pleasantly or unpleasantly surprised",
+        "Ask follow-up questions to understand better",
       ],
       emotion: "surprise",
-      modelName: "Keyword detection (surprise)",
+      modelName: "Pattern-based detection",
     };
   }
 

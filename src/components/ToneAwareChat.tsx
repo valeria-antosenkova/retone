@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,14 @@ import {
   ToneAnalysis,
   initializeSentimentAnalysis,
 } from "@/utils/sentimentAnalysis";
-import { Send, Loader2, Eye, EyeOff, Download } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  Eye,
+  EyeOff,
+  Download,
+  AlertTriangle,
+} from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -61,6 +68,10 @@ export function ToneAwareChat() {
   const [currentMessageId, setCurrentMessageId] = useState<string>("");
   const [lastInputSnapshot, setLastInputSnapshot] = useState("");
   const [editCount, setEditCount] = useState(0);
+  const [sleepOnItTimer, setSleepOnItTimer] = useState<number | null>(null);
+  const [sleepOnItCountdown, setSleepOnItCountdown] = useState<number>(0);
+  const [pendingMessage, setPendingMessage] = useState<string>("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -127,6 +138,11 @@ export function ToneAwareChat() {
       }
     };
   }, [room, user]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   useEffect(() => {
     const loadModel = async () => {
@@ -212,13 +228,11 @@ export function ToneAwareChat() {
     user,
   ]);
 
-  const handleSendMessage = () => {
-    if (!input.trim()) return;
-
+  const sendMessageNow = (messageText: string, analysis: ToneAnalysis) => {
     const newMessage: Message = {
       id: currentMessageId || Date.now().toString(),
-      text: input,
-      tone: currentAnalysis,
+      text: messageText,
+      tone: analysis,
       timestamp: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -229,7 +243,7 @@ export function ToneAwareChat() {
 
     socket.emit("send-message", room, newMessage);
 
-    if (currentAnalysis.tone === "negative") {
+    if (analysis.tone === "negative") {
       const newCount = consecutiveNegativeCount + 1;
       setConsecutiveNegativeCount(newCount);
 
@@ -244,14 +258,69 @@ export function ToneAwareChat() {
       room,
       user,
       newMessage.id,
-      currentAnalysis,
-      input.length
+      analysis,
+      messageText.length
     );
 
     setInput("");
     setLastInputSnapshot("");
     setEditCount(0);
     setCurrentMessageId("");
+    setPendingMessage("");
+    setSleepOnItCountdown(0);
+  };
+
+  const handleSendMessage = () => {
+    if (!input.trim()) return;
+
+    // Sleep on it mode: delay negative messages by 5 seconds
+    if (feedbackMode && currentAnalysis.tone === "negative") {
+      setPendingMessage(input);
+      setSleepOnItCountdown(5);
+
+      const timer = window.setInterval(() => {
+        setSleepOnItCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setSleepOnItTimer(null);
+            // Send the message after countdown
+            sendMessageNow(input, currentAnalysis);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      setSleepOnItTimer(timer);
+    } else {
+      // Send immediately for non-negative messages
+      sendMessageNow(input, currentAnalysis);
+    }
+  };
+
+  const handleCancelSend = () => {
+    if (sleepOnItTimer) {
+      clearInterval(sleepOnItTimer);
+      setSleepOnItTimer(null);
+    }
+    setSleepOnItCountdown(0);
+    setPendingMessage("");
+
+    toast({
+      title: "Message cancelled",
+      description: "Take your time to reconsider your message.",
+    });
+  };
+
+  const handleSendNow = () => {
+    if (sleepOnItTimer) {
+      clearInterval(sleepOnItTimer);
+      setSleepOnItTimer(null);
+    }
+
+    if (pendingMessage) {
+      sendMessageNow(pendingMessage, currentAnalysis);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -278,67 +347,87 @@ export function ToneAwareChat() {
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <header className="border-b bg-card px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground mb-1">
-              <a href="/" style={{ fontVariant: "small-caps" }}>
-                ReToned Chatroom
-              </a>
-            </h1>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Room Code: </span>
-              <span className="inline-flex items-center px-3 py-1 rounded-md bg-blue-50 text-blue-700 ring-1 ring-blue-100 text-sm font-medium">
-                {room}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Connected users indicator */}
-            {connectedUsers.length > 0 && (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">Connected</span>
+      <header className="border-b bg-gradient-to-r from-white via-blue-50/30 to-white backdrop-blur-sm shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between gap-6">
+            {/* Left: Branding & Room */}
+            <div className="flex items-center gap-6">
+              <div>
+                <h1 className="text-2xl font-bold mb-1">
+                  <a
+                    href="/"
+                    style={{ fontVariant: "small-caps" }}
+                    className="text-gray-900"
+                  >
+                    Re-
+                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      Toned
+                    </span>
+                  </a>
+                </h1>
                 <div className="flex items-center gap-2">
-                  {connectedUsers.map((uname) => {
-                    const name = uname || "Host";
-                    const isMe = name === user;
-                    return (
-                      <div
-                        key={name}
-                        title={isMe ? `${name} (you)` : name}
-                        aria-current={isMe ? "true" : undefined}
-                        className={cn(
-                          "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm",
-                          isMe
-                            ? "bg-sky-50 text-sky-700 font-semibold ring-1 ring-sky-200"
-                            : "bg-muted/50 text-muted-foreground"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "h-2 w-2 rounded-full",
-                            isMe ? "bg-sky-500" : "bg-green-500"
-                          )}
-                        />
-                        <span>{isMe ? `${name} (you)` : name}</span>
-                      </div>
-                    );
-                  })}
+                  <span className="text-xs text-gray-500">Room:</span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-semibold shadow-sm">
+                    {room}
+                  </span>
                 </div>
               </div>
-            )}
 
-            {/* Right-aligned feedback + export */}
-            <div className="flex items-center gap-3 pl-5 border-l border-border ml-auto">
-              {feedbackMode ? (
-                <Eye className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <EyeOff className="h-4 w-4 text-muted-foreground" />
+              {/* Connected Users */}
+              {connectedUsers.length > 0 && (
+                <div className="flex items-center gap-2 pl-6 border-l border-gray-200">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-xs font-medium text-gray-600">
+                      {connectedUsers.length} online
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {connectedUsers.map((uname) => {
+                      const name = uname || "Host";
+                      const isMe = name === user;
+                      return (
+                        <div
+                          key={name}
+                          title={isMe ? `${name} (you)` : name}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all",
+                            isMe
+                              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              isMe ? "bg-white" : "bg-green-500"
+                            )}
+                          />
+                          <span className="max-w-[100px] truncate">
+                            {isMe ? "You" : name}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
-              <div className="flex items-center gap-2">
-                <Label htmlFor="feedback-mode" className="text-sm font-medium">
-                  {feedbackMode ? "Feedback Mode" : "Control Mode"}
+            </div>
+
+            {/* Right: Controls */}
+            <div className="flex items-center gap-3">
+              {/* Mode Toggle */}
+              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 shadow-sm">
+                {feedbackMode ? (
+                  <Eye className="h-3.5 w-3.5 text-blue-600" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5 text-gray-400" />
+                )}
+                <Label
+                  htmlFor="feedback-mode"
+                  className="text-xs font-medium text-gray-700 cursor-pointer"
+                >
+                  {feedbackMode ? "Feedback On" : "Feedback Off"}
                 </Label>
                 <Switch
                   id="feedback-mode"
@@ -347,14 +436,15 @@ export function ToneAwareChat() {
                 />
               </div>
 
+              {/* Export Button */}
               <Button
                 onClick={handleExportData}
                 variant="outline"
                 size="sm"
-                className="gap-2 h-9 whitespace-nowrap"
+                className="gap-2 h-9 px-3 bg-white hover:bg-gray-50 border-gray-200 shadow-sm"
               >
-                <Download className="h-4 w-4" />
-                Export Data
+                <Download className="h-3.5 w-3.5" />
+                <span className="text-xs font-medium">Export</span>
               </Button>
             </div>
           </div>
@@ -379,76 +469,149 @@ export function ToneAwareChat() {
                     showTone={feedbackMode}
                   />
                 ))}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
           </Card>
 
           {/* Input Area */}
-          <div className="space-y-4">
-            {/* Tone Indicator - only show in Feedback Mode */}
-            {feedbackMode && (
-              <Card className="p-4 bg-gradient-to-r from-blue-50/50 to-transparent border-blue-100">
-                {isModelLoading ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Loading tone analysis...</span>
+          <div className="space-y-3">
+            {/* Sleep on it countdown */}
+            {sleepOnItCountdown > 0 && (
+              <Card className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 shadow-md animate-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex items-center justify-center">
+                      <svg className="h-12 w-12 -rotate-90">
+                        <circle
+                          cx="24"
+                          cy="24"
+                          r="20"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          fill="none"
+                          className="text-amber-200"
+                        />
+                        <circle
+                          cx="24"
+                          cy="24"
+                          r="20"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          fill="none"
+                          strokeDasharray={`${2 * Math.PI * 20}`}
+                          strokeDashoffset={`${
+                            2 * Math.PI * 20 * (1 - sleepOnItCountdown / 5)
+                          }`}
+                          className="text-amber-600 transition-all duration-1000"
+                        />
+                      </svg>
+                      <span className="absolute text-lg font-bold text-amber-700">
+                        {sleepOnItCountdown}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900">
+                        Sleep on it...
+                      </p>
+                      <p className="text-xs text-amber-700">
+                        Taking a moment before sending this message
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <ToneIndicator
-                    analysis={currentAnalysis}
-                    className="w-full"
-                  />
-                )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleSendNow}
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-300 hover:bg-amber-100 text-amber-900 font-medium"
+                    >
+                      Send Now
+                    </Button>
+                    <Button
+                      onClick={handleCancelSend}
+                      size="sm"
+                      variant="outline"
+                      className="border-red-300 hover:bg-red-50 text-red-700 font-medium"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
               </Card>
             )}
 
-            {/* Escalation Warning - only show in Feedback Mode */}
-            {feedbackMode && consecutiveNegativeCount >= 2 && (
-              <EscalationWarning
-                consecutiveNegativeCount={consecutiveNegativeCount}
-              />
-            )}
+            {/* Beautiful Input Box with Inline Tone Indicator */}
+            <Card className="p-5 shadow-lg border-gray-200/60 backdrop-blur-sm bg-white/95 relative overflow-hidden group hover:shadow-xl transition-shadow duration-300">
+              {/* Subtle gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-transparent to-purple-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-            {/* Input Box */}
-            <Card className="p-4 shadow-sm">
-              <div className="flex gap-2">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  placeholder="Type your message here..."
-                  className="min-h-[100px] resize-none"
-                  disabled={isModelLoading}
-                />
-                <div className="relative">
-                  <Button
-                    onClick={handleSendMessage}
-                    size="icon"
-                    disabled={!input.trim() || isModelLoading}
-                    className="h-[100px]"
-                  >
-                    {isAnalyzing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+              <div className="flex gap-4 relative z-10">
+                <div className="flex-1 space-y-3">
+                  <Textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Type your message here..."
+                    className="min-h-[80px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 bg-transparent placeholder:text-gray-400 text-gray-900 outline-none"
+                    disabled={isModelLoading}
+                  />
+
+                  {/* Always show separator and tone indicator area */}
+                  <div className="pt-3 border-t border-gray-100">
+                    {feedbackMode && !isModelLoading ? (
+                      <div className="animate-in slide-in-from-top-2 duration-300">
+                        <ToneIndicator
+                          analysis={currentAnalysis}
+                          className="w-full"
+                          showEscalation={true}
+                          consecutiveNegativeCount={consecutiveNegativeCount}
+                        />
+                      </div>
                     ) : (
-                      <Send className="h-4 w-4" />
+                      <div className="h-8 flex items-center">
+                        <span className="text-xs text-gray-400">
+                          {isModelLoading ? "Loading..." : "Feedback is off"}
+                        </span>
+                      </div>
                     )}
-                  </Button>
-                  {feedbackMode &&
-                    !isModelLoading &&
-                    (currentAnalysis.suggestions.length > 0 ||
-                      currentAnalysis.tone === "negative") && (
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "absolute -top-1 -right-1 h-2 w-2 rounded-full ring-1 ring-background",
-                          currentAnalysis.tone === "negative"
-                            ? "bg-tone-negative"
-                            : "bg-tone-positive"
-                        )}
-                      />
-                    )}
+                  </div>
                 </div>
+
+                {/* Refined send button */}
+                <Button
+                  onClick={handleSendMessage}
+                  size="icon"
+                  disabled={
+                    !input.trim() || isModelLoading || sleepOnItCountdown > 0
+                  }
+                  className={cn(
+                    "h-11 w-11 shrink-0 rounded-full shadow-md transition-all duration-300",
+                    "hover:shadow-lg hover:scale-105 active:scale-95",
+                    "bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800",
+                    "disabled:from-gray-300 disabled:to-gray-400"
+                  )}
+                  title="Send message"
+                >
+                  {isAnalyzing ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
               </div>
+
+              {/* Elegant loading overlay */}
+              {isModelLoading && (
+                <div className="absolute inset-0 bg-white/90 backdrop-blur-md flex items-center justify-center rounded-lg animate-in fade-in duration-200">
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    <span className="text-sm font-medium text-gray-600">
+                      Loading analysis...
+                    </span>
+                  </div>
+                </div>
+              )}
             </Card>
           </div>
         </div>

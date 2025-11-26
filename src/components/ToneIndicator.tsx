@@ -7,13 +7,21 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { SuggestionPanel } from "@/components/SuggestionPanel";
+import { AlertTriangle } from "lucide-react";
 
 interface ToneIndicatorProps {
   analysis: ToneAnalysis;
   className?: string;
+  showEscalation?: boolean;
+  consecutiveNegativeCount?: number;
 }
 
-export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
+export function ToneIndicator({
+  analysis,
+  className,
+  showEscalation = false,
+  consecutiveNegativeCount = 0,
+}: ToneIndicatorProps) {
   const toneColors = {
     positive:
       "bg-tone-positive-light text-tone-positive-foreground border-tone-positive",
@@ -24,80 +32,99 @@ export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
   };
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex items-center gap-3">
-        <Badge
-          variant="outline"
-          className={cn(
-            "transition-all duration-300 ease-in-out whitespace-nowrap",
-            toneColors[analysis.tone]
+    <div className={cn("flex flex-col gap-2.5", className)}>
+      {/* Elegant inline display */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Animated emoji with subtle glow */}
+        <div className="relative group">
+          <span
+            className={cn(
+              "text-xl transition-all duration-300 ease-out inline-block",
+              "group-hover:scale-110"
+            )}
+            title={analysis.label}
+          >
+            {analysis.emoji}
+          </span>
+          {analysis.tone === "negative" && (
+            <span className="absolute inset-0 blur-md opacity-30 bg-red-400 rounded-full animate-pulse" />
           )}
-        >
-          <span className="mr-1">{analysis.emoji}</span>
-          {analysis.label}
-        </Badge>
-        <div className="flex-1 h-2.5 bg-secondary rounded-full overflow-hidden min-w-[120px]">
+        </div>
+
+        {/* Smooth gradient progress bar */}
+        <div className="flex-1 h-2 bg-gradient-to-r from-gray-100 to-gray-50 rounded-full overflow-hidden shadow-inner min-w-[100px] max-w-[140px]">
           <div
             className={cn(
-              "h-full transition-all duration-500 ease-out",
-              analysis.tone === "positive" && "bg-tone-positive",
-              analysis.tone === "neutral" && "bg-tone-neutral",
-              analysis.tone === "negative" && "bg-tone-negative"
+              "h-full transition-all duration-700 ease-out rounded-full",
+              "shadow-sm",
+              analysis.tone === "positive" &&
+                "bg-gradient-to-r from-green-400 to-emerald-500",
+              analysis.tone === "neutral" &&
+                "bg-gradient-to-r from-blue-400 to-cyan-500",
+              analysis.tone === "negative" &&
+                "bg-gradient-to-r from-red-400 to-rose-500"
             )}
             style={{ width: `${analysis.confidence * 100}%` }}
           />
         </div>
-        {/* Feedback button next to the colored bar */}
+
+        {/* Refined emotion label with fade-in */}
+        {analysis.emotion && (
+          <span className="text-xs font-medium text-gray-600 capitalize px-2 py-1 bg-gray-50 rounded-full border border-gray-200 animate-in fade-in duration-300">
+            {analysis.emotion}
+          </span>
+        )}
+
+        {/* Compact escalation warning - inline */}
+        {showEscalation && consecutiveNegativeCount >= 2 && (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 animate-in fade-in duration-300">
+            <AlertTriangle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
+            <span className="text-xs font-medium text-red-700 whitespace-nowrap">
+              {consecutiveNegativeCount} tense in a row
+            </span>
+          </div>
+        )}
+
+        {/* Enhanced feedback button with label */}
         {(analysis.suggestions.length > 0 || analysis.tone === "negative") && (
           <Popover>
             <PopoverTrigger asChild>
               <button
-                title="Show feedback"
-                aria-label="Show feedback"
-                className={cn(
-                  "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 gap-2 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
+                title={
                   analysis.tone === "negative"
-                    ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 hover:border-red-300"
-                    : "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300"
+                    ? "Review suggestions"
+                    : "View insights"
+                }
+                aria-label="Feedback"
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-300",
+                  "hover:scale-105 active:scale-95",
+                  "shadow-sm hover:shadow-md",
+                  "text-xs font-medium",
+                  analysis.tone === "negative"
+                    ? "text-red-700 bg-gradient-to-r from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 border border-red-200"
+                    : "text-blue-700 bg-gradient-to-r from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 border border-blue-200"
                 )}
               >
-                {analysis.tone === "negative" ? (
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                    <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2" />
-                  </svg>
-                ) : (
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path
-                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                )}
+                <svg
+                  className="h-3.5 w-3.5 transition-transform duration-300"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
                 <span>Feedback</span>
               </button>
             </PopoverTrigger>
             <PopoverContent
-              side="right"
+              side="top"
               align="end"
-              className="w-96 p-0 shadow-xl border-blue-200 rounded-xl"
-              sideOffset={12}
-              collisionPadding={16}
+              className="w-80 p-0 shadow-xl border rounded-xl animate-in slide-in-from-bottom-2 duration-200"
+              sideOffset={10}
             >
               <SuggestionPanel analysis={analysis} />
             </PopoverContent>
@@ -105,27 +132,36 @@ export function ToneIndicator({ analysis, className }: ToneIndicatorProps) {
         )}
       </div>
 
-      {/* Emotion Detection Display - 28 emotion categories */}
-      {analysis.emotion && (
-        <div className="border-t pt-3">
-          <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-            Detected Emotion
-          </p>
-          <Badge variant="secondary" className="capitalize">
-            {analysis.emotion}
-          </Badge>
-          <p className="text-xs text-muted-foreground mt-1.5">
-            Confidence:{" "}
-            <span className="font-semibold">
-              {(analysis.confidence * 100).toFixed(1)}%
-            </span>
-          </p>
-          {analysis.modelName && (
-            <p className="text-xs text-muted-foreground mt-1 italic">
-              {analysis.modelName.replace(/\s*\(.*?\)\s*/g, "").trim()}
-            </p>
-          )}
-        </div>
+      {/* Elegant collapsible details */}
+      {analysis.modelName && (
+        <details className="group">
+          <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 transition-colors duration-200 list-none flex items-center gap-1.5 select-none">
+            <svg
+              className="h-3 w-3 transition-transform duration-200 group-open:rotate-90"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            <span className="font-medium">Analysis Details</span>
+          </summary>
+          <div className="mt-2 pl-5 text-xs text-gray-500 space-y-1 animate-in slide-in-from-top-1 duration-200">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Confidence:</span>
+              <span className="font-semibold text-gray-700">
+                {(analysis.confidence * 100).toFixed(1)}%
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Model:</span>
+              <span className="font-mono text-xs text-gray-600">
+                {analysis.modelName.replace(/\s*\(.*?\)\s*/g, "").trim()}
+              </span>
+            </div>
+          </div>
+        </details>
       )}
     </div>
   );
