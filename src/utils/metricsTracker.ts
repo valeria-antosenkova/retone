@@ -5,12 +5,22 @@ export interface MessageMetric {
   userId: string;
   timestamp: number;
   tone: ToneAnalysis;
+  emotion: string | undefined; // specific emotion detected
   messageLength: number;
+  wordCount: number;
+  characterCount: number;
   timeSinceLastMessage: number; // milliseconds
   timeSinceLastEscalation: number | null; // milliseconds, null if no prior escalation
   isAfterEscalation: boolean;
   wasEdited: boolean;
   editCount: number;
+  timeToSend: number; // time from start typing to send
+  wasSleepOnItTriggered: boolean;
+  sleepOnItCancelled: boolean;
+  sleepOnItSentEarly: boolean;
+  modelUsed: string | undefined; // which ML model or pattern detected
+  suggestionCount: number; // number of suggestions shown
+  feedbackViewed: boolean; // whether user viewed feedback panel
 }
 
 export interface UserMetrics {
@@ -26,6 +36,12 @@ export interface UserMetrics {
   averageTimeAfterEscalation: number; // milliseconds
   generalSlowdownRate: number; // percentage change in typing speed
   postEscalationSlowdownRate: number; // percentage change after escalation
+  sleepOnItTriggerCount: number;
+  sleepOnItCancelCount: number;
+  sleepOnItSentEarlyCount: number;
+  averageMessageLength: number;
+  emotionDistribution: Map<string, number>;
+  feedbackEngagement: number; // percentage of times feedback was viewed
 }
 
 export interface SessionMetrics {
@@ -35,12 +51,14 @@ export interface SessionMetrics {
   users: Map<string, UserMetrics>;
   totalMessages: number;
   totalEscalations: number;
+  feedbackModeEnabled: boolean;
+  conversationTurns: number; // back-and-forth exchanges
 }
 
 class MetricsTracker {
   private sessions: Map<string, SessionMetrics> = new Map();
 
-  createSession(sessionId: string, overwrite: boolean = true): void {
+  createSession(sessionId: string, feedbackMode: boolean = true, overwrite: boolean = true): void {
     // If overwrite is true (default), delete existing session data
     if (overwrite && this.sessions.has(sessionId)) {
       this.sessions.delete(sessionId);
@@ -54,6 +72,8 @@ class MetricsTracker {
         users: new Map(),
         totalMessages: 0,
         totalEscalations: 0,
+        feedbackModeEnabled: feedbackMode,
+        conversationTurns: 0,
       });
     }
   }
@@ -86,6 +106,12 @@ class MetricsTracker {
         averageTimeAfterEscalation: 0,
         generalSlowdownRate: 0,
         postEscalationSlowdownRate: 0,
+        sleepOnItTriggerCount: 0,
+        sleepOnItCancelCount: 0,
+        sleepOnItSentEarlyCount: 0,
+        averageMessageLength: 0,
+        emotionDistribution: new Map(),
+        feedbackEngagement: 0,
       });
     }
 
@@ -97,13 +123,18 @@ class MetricsTracker {
     userId: string,
     messageId: string,
     tone: ToneAnalysis,
-    messageLength: number
+    messageLength: number,
+    timeToSend: number = 0
   ): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
     const userMetrics = this.getUserMetrics(sessionId, userId);
     const now = Date.now();
+
+    // Calculate word and character count
+    const wordCount = messageLength > 0 ? messageLength.toString().split(/\s+/).filter(w => w.length > 0).length : 0;
+    const characterCount = messageLength;
 
     // Calculate time since last message
     let timeSinceLastMessage = 0;
@@ -130,17 +161,33 @@ class MetricsTracker {
       userId,
       timestamp: now,
       tone,
+      emotion: tone.emotion,
       messageLength,
+      wordCount,
+      characterCount,
       timeSinceLastMessage,
       timeSinceLastEscalation,
       isAfterEscalation,
       wasEdited: false,
       editCount: 0,
+      timeToSend,
+      wasSleepOnItTriggered: false,
+      sleepOnItCancelled: false,
+      sleepOnItSentEarly: false,
+      modelUsed: tone.modelName,
+      suggestionCount: tone.suggestions?.length || 0,
+      feedbackViewed: false,
     };
 
     userMetrics.messages.push(messageMetric);
     userMetrics.totalMessages++;
     session.totalMessages++;
+
+    // Track emotion distribution
+    if (tone.emotion) {
+      const currentCount = userMetrics.emotionDistribution.get(tone.emotion) || 0;
+      userMetrics.emotionDistribution.set(tone.emotion, currentCount + 1);
+    }
 
     // Convert tone to score: positive = 1, neutral = 0, negative = -1
     const toneScore =
@@ -175,8 +222,60 @@ class MetricsTracker {
     this.updateUserMetrics(sessionId, userId);
   }
 
+  trackSleepOnItTriggered(sessionId: string, userId: string, messageId: string): void {
+    const userMetrics = this.getUserMetrics(sessionId, userId);
+    const message = userMetrics.messages.find((m) => m.id === messageId);
+    
+    if (message) {
+      message.wasSleepOnItTriggered = true;
+    }
+    userMetrics.sleepOnItTriggerCount++;
+  }
+
+  trackSleepOnItCancelled(sessionId: string, userId: string, messageId: string): void {
+    const userMetrics = this.getUserMetrics(sessionId, userId);
+    const message = userMetrics.messages.find((m) => m.id === messageId);
+    
+    if (message) {
+      message.sleepOnItCancelled = true;
+    }
+    userMetrics.sleepOnItCancelCount++;
+  }
+
+  trackSleepOnItSentEarly(sessionId: string, userId: string, messageId: string): void {
+    const userMetrics = this.getUserMetrics(sessionId, userId);
+    const message = userMetrics.messages.find((m) => m.id === messageId);
+    
+    if (message) {
+      message.sleepOnItSentEarly = true;
+    }
+    userMetrics.sleepOnItSentEarlyCount++;
+  }
+
+  trackFeedbackViewed(sessionId: string, userId: string, messageId: string): void {
+    const userMetrics = this.getUserMetrics(sessionId, userId);
+    const message = userMetrics.messages.find((m) => m.id === messageId);
+    
+    if (message) {
+      message.feedbackViewed = true;
+    }
+  }
+
   private updateUserMetrics(sessionId: string, userId: string): void {
     const userMetrics = this.getUserMetrics(sessionId, userId);
+
+    // Calculate average message length
+    if (userMetrics.messages.length > 0) {
+      const totalLength = userMetrics.messages.reduce((sum, m) => sum + m.messageLength, 0);
+      userMetrics.averageMessageLength = totalLength / userMetrics.messages.length;
+    }
+
+    // Calculate feedback engagement rate
+    const messagesWithFeedback = userMetrics.messages.filter(m => m.suggestionCount > 0);
+    if (messagesWithFeedback.length > 0) {
+      const viewedCount = messagesWithFeedback.filter(m => m.feedbackViewed).length;
+      userMetrics.feedbackEngagement = (viewedCount / messagesWithFeedback.length) * 100;
+    }
 
     // Calculate average tone score
     if (userMetrics.toneScores.length > 0) {
@@ -260,13 +359,24 @@ class MetricsTracker {
       ([userId, metrics]) => ({
         userId,
         totalMessages: metrics.totalMessages,
+        averageMessageLength: metrics.averageMessageLength.toFixed(1),
         editedMessages: metrics.editedMessages,
         editRate:
           metrics.totalMessages > 0
-            ? (metrics.editedMessages / metrics.totalMessages) * 100
-            : 0,
+            ? ((metrics.editedMessages / metrics.totalMessages) * 100).toFixed(1) + "%"
+            : "0%",
         escalationCount: metrics.escalationCount,
-        averageToneScore: metrics.averageToneScore,
+        sleepOnItMetrics: {
+          triggered: metrics.sleepOnItTriggerCount,
+          cancelled: metrics.sleepOnItCancelCount,
+          sentEarly: metrics.sleepOnItSentEarlyCount,
+          completionRate: metrics.sleepOnItTriggerCount > 0 
+            ? (((metrics.sleepOnItTriggerCount - metrics.sleepOnItCancelCount) / metrics.sleepOnItTriggerCount) * 100).toFixed(1) + "%"
+            : "N/A",
+        },
+        feedbackEngagement: metrics.feedbackEngagement.toFixed(1) + "%",
+        emotionDistribution: Object.fromEntries(metrics.emotionDistribution),
+        averageToneScore: metrics.averageToneScore.toFixed(2),
         toneDistribution: this.calculateToneDistribution(metrics.toneScores),
         averageTimePerMessage: this.formatTime(metrics.averageTimePerMessage),
         averageTimeAfterEscalation: this.formatTime(
@@ -279,18 +389,29 @@ class MetricsTracker {
           id: m.id,
           timestamp: new Date(m.timestamp).toISOString(),
           tone: m.tone.label,
+          emotion: m.emotion || "none",
+          modelUsed: m.modelUsed || "unknown",
           toneConfidence: (m.tone.confidence * 100).toFixed(1) + "%",
           messageLength: m.messageLength,
+          wordCount: m.wordCount,
+          characterCount: m.characterCount,
           timeSinceLastMessage: this.formatTime(m.timeSinceLastMessage),
+          timeToSend: this.formatTime(m.timeToSend),
           isAfterEscalation: m.isAfterEscalation,
           wasEdited: m.wasEdited,
           editCount: m.editCount,
+          wasSleepOnItTriggered: m.wasSleepOnItTriggered,
+          sleepOnItCancelled: m.sleepOnItCancelled,
+          sleepOnItSentEarly: m.sleepOnItSentEarly,
+          suggestionCount: m.suggestionCount,
+          feedbackViewed: m.feedbackViewed,
         })),
       })
     );
 
     return {
       sessionId,
+      feedbackModeEnabled: session.feedbackModeEnabled,
       sessionDuration: session.endTime
         ? this.formatTime(session.endTime - session.startTime)
         : "ongoing",
@@ -381,12 +502,22 @@ class MetricsTracker {
       "Message ID",
       "Timestamp",
       "Tone",
+      "Emotion",
+      "Model Used",
       "Tone Confidence",
       "Message Length",
+      "Word Count",
+      "Character Count",
       "Time Since Last Message",
+      "Time To Send",
       "After Escalation",
       "Was Edited",
       "Edit Count",
+      "Sleep On It Triggered",
+      "Sleep On It Cancelled",
+      "Sleep On It Sent Early",
+      "Suggestion Count",
+      "Feedback Viewed",
     ];
 
     const rows: string[][] = [headers];
@@ -398,12 +529,22 @@ class MetricsTracker {
           msg.id,
           msg.timestamp,
           msg.tone,
+          msg.emotion,
+          msg.modelUsed,
           msg.toneConfidence,
           msg.messageLength.toString(),
+          msg.wordCount.toString(),
+          msg.characterCount.toString(),
           msg.timeSinceLastMessage,
+          msg.timeToSend,
           msg.isAfterEscalation.toString(),
           msg.wasEdited.toString(),
           msg.editCount.toString(),
+          msg.wasSleepOnItTriggered.toString(),
+          msg.sleepOnItCancelled.toString(),
+          msg.sleepOnItSentEarly.toString(),
+          msg.suggestionCount.toString(),
+          msg.feedbackViewed.toString(),
         ]);
       });
     });

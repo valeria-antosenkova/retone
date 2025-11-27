@@ -361,7 +361,7 @@ export function ToneAwareChat() {
                   >
                     Re-
                     <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      Toned
+                      Tone
                     </span>
                   </a>
                 </h1>
