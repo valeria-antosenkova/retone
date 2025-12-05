@@ -85,24 +85,22 @@ npm run server     # Backend
 # Build for production
 npm run build
 
-**Access the app:**
-- **Local**: `http://localhost:8080`
-- **Network**: `http://[YOUR_IP]:8080` (e.g., `http://192.168.1.100:8080`)
+```
+
+Access the app:
+- Local: `http://localhost:8080`
+- Network: `http://[YOUR_IP]:8080` (e.g., `http://192.168.1.100:8080`)
   - Run `ifconfig | grep "inet " | grep -v 127.0.0.1` (Mac/Linux) to find your IP
   - Or check Vite terminal output for the Network URL
 
-**Then:**
+Then:
 1. Open the URL in your browser (or from any device on the same network)
 2. Create or join a chat room
-3. Toggle **Feedback Mode** on to see tone analysis
+3. Toggle Feedback Mode on to see tone analysis
 4. Start chatting!
-```
 
-**Then:**
-1. Open `http://localhost:8080`
-2. Create or join a chat room
-3. Toggle **Feedback Mode** on to see tone analysis
-4. Start chatting!
+
+
 
 ---
 
