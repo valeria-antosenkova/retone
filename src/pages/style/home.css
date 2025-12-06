@@ -126,7 +126,7 @@ body {
 dialog {
   position: fixed;
   margin: auto;
-  padding: 32px !important;
+  padding: 1dvw 1dvh !important;
   border-radius: 16px;
   background: linear-gradient(135deg, rgb(250, 250, 252), rgb(255, 255, 255));
   border: 1px solid rgba(36, 36, 168, 0.2);
@@ -135,19 +135,22 @@ dialog {
   display: none;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 3%;
   z-index: 20;
-  min-width: 500px;
+  min-width: 20vw;
+  max-width: 90vw;
 }
 dialog input {
   flex: 1;
-  padding: 12px 16px;
+  padding: 2% 4%;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: white;
   color: #111;
-  font-size: 14px;
+  font-size: 50%;
   transition: all 0.2s ease;
+  max-width: 30%;
 }
 dialog input:focus {
   outline: none;
@@ -161,12 +164,14 @@ dialog button {
   background-color: rgb(21, 21, 120) !important;
   color: white;
   border-radius: 8px !important;
-  padding: 12px 24px !important;
+  padding: 2% 4% !important;
   font-weight: 600;
+  font-size: 50%;
   transition: all 0.2s ease;
   border: none;
   cursor: pointer;
   white-space: nowrap;
+  margin: 0 !important;
 }
 dialog button:hover {
   background-color: rgb(36, 46, 123) !important;
@@ -174,8 +179,8 @@ dialog button:hover {
 }
 dialog a {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 1%;
+  right: 1%;
   background-color: transparent !important;
   padding: 8px !important;
   color: #111;
@@ -192,6 +197,7 @@ dialog a:hover {
 .closeDialog {
   color: #111 !important;
   font-weight: bold;
+  border: none !important;
 }
 .closeDialog:hover {
   color: #ef4444 !important;
