@@ -143,12 +143,11 @@ dialog {
 }
 dialog input {
   flex: 1;
-  padding: 2% 4%;
+  padding: 1vh 1vw;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: white;
   color: #111;
-  font-size: 50%;
   transition: all 0.2s ease;
   max-width: 30%;
 }
@@ -164,9 +163,8 @@ dialog button {
   background-color: rgb(21, 21, 120) !important;
   color: white;
   border-radius: 8px !important;
-  padding: 2% 4% !important;
+  padding: 1vh 1vw !important;
   font-weight: 600;
-  font-size: 50%;
   transition: all 0.2s ease;
   border: none;
   cursor: pointer;
