@@ -76,7 +76,8 @@ body {
   box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
 }
 .home-container .menu-form h1 {
-  font-size: 60px;
+  font-size: 15vw;
+  white-space: nowrap;
   font-variant: small-caps;
   font-weight: bolder;
 }

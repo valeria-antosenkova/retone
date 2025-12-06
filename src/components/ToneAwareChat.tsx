@@ -43,7 +43,8 @@ interface Message {
   isUser: boolean;
 }
 
-const socket = io("http://localhost:3001");
+const serverIP = window.location.hostname;
+const socket = io("http://"+serverIP+":3001");
 
 export function ToneAwareChat() {
   const location = useLocation();

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import "./style/home.css";
 
-const socket = io("http://localhost:3001");
+const serverIP = window.location.hostname;
+const socket = io("http://"+serverIP+":3001");
 
 const Home = () => {
   const navigate = useNavigate();
